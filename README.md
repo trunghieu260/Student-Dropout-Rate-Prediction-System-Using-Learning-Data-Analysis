@@ -45,7 +45,6 @@
     <img alt="Language: Vietnamese" src="https://img.shields.io/badge/Language-Vietnamese-22b8cf?style=flat-square">
   </p>
 </div>
----
 
 # 🎓 Hệ Thống Dự Báo Tỷ Lệ Bỏ Học Sinh Viên
 
