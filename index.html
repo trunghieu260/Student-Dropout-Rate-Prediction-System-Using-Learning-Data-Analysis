@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ứng dụng Phân tích Rủi ro Nghỉ học (Gemini AI Project)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .risk-high { background-color: #f8d7da; color: #721c24; }
+        .risk-medium { background-color: #fff3cd; color: #856404; }
+        .risk-low { background-color: #d4edda; color: #155724; }
+        .table-container { max-height: 600px; overflow-y: auto; }
+        .analyzing { opacity: 0.6; }
+        #progress-container { display: none; }
+        #dashboard-area { display: none; }
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 40vh;
+            width: 100%;
+        }
+        /* THÊM CSS CHO CONTROLS */
+        #controls-area { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Phân Tích Khả Năng Nghỉ Học </h1>
+        
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="single-tab" data-bs-toggle="tab" data-bs-target="#single-analysis" type="button">Phân Tích Đơn Lẻ</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="batch-tab" data-bs-toggle="tab" data-bs-target="#batch-analysis" type="button">Phân Tích Hàng Loạt (Excel)</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button">Dashboard</button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="single-analysis">
+                <div id="loading-single" class="alert alert-info d-none">Đang phân tích với Gemini AI... Vui lòng chờ.</div>
+
+                <form id="analysis-form" class="p-4 border rounded shadow-sm">
+                    <h5 class="mb-3">Nhập Dữ Liệu Sinh Viên</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="tbchtH4" class="form-label">Điểm TB Chung Hệ 4</label>
+                            <input type="number" step="0.01" min="0" max="4" class="form-control" id="tbchtH4" value="2.0" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="hpNo" class="form-label">Số Học phần Nợ</label>
+                            <input type="number" min="0" class="form-control" id="hpNo" value="3" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="diemRL" class="form-label">Điểm Rèn Luyện</label>
+                            <input type="number" min="0" max="100" class="form-control" id="diemRL" value="75" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="xepLoai" class="form-label">Xếp Loại Học tập</label>
+                            <select class="form-select" id="xepLoai" required>
+                                <option value="Giỏi">Giỏi</option>
+                                <option value="Khá" selected>Khá</option>
+                                <option value="Trung bình">Trung bình</option>
+                                <option value="Yếu">Yếu</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mt-3">Phân Tích Rủi Ro</button>
+                </form>
+
+                <div id="result-area" class="mt-5 p-4 border rounded">
+                    <h4 class="mb-3">Kết Quả Phân Tích từ AI</h4>
+                    <p>Nhập dữ liệu và nhấn nút "Phân Tích Rủi Ro" để bắt đầu.</p>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="batch-analysis">
+                <div class="p-4 border rounded shadow-sm">
+                    <h5 class="mb-3">📊 Tải File Excel Danh Sách Sinh Viên</h5>
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">Chọn file Excel (.xlsx, .xls)</label>
+                        <input type="file" class="form-control" id="excelFile" accept=".xlsx,.xls">
+                        <small class="text-muted">File phải có các cột: Mã SV, Họ và tên, Lớp, TBCHT H4, HP Nợ, Điểm RL, Xếp loại, Học phí</small>
+                    </div>
+                    <button id="analyzeBtn" class="btn btn-success w-100" disabled>Phân Tích Tất Cả Sinh Viên</button>
+                </div>
+
+                <div id="progress-container" class="mt-3">
+                    <div class="alert alert-info">
+                        <strong>Đang xử lý:</strong> <span id="progress-text">0/0</span>
+                        <div class="progress mt-2">
+                            <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="batch-result" class="mt-4">
+                    <h5>Kết Quả Phân Tích Chi Tiết</h5>
+                    
+                    <div id="controls-area" class="p-3 my-3 border rounded bg-light">
+                        <div class="row align-items-center">
+                            <div class="col-md-7">
+                                <label class="form-label fw-bold">🔎 Lọc theo mức độ rủi ro:</label>
+                                <div id="filter-buttons" class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary active filter-btn" data-filter="all">Tất cả</button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger filter-btn" data-filter="Rất Cao">Rất Cao</button>
+                                    <button type="button" class="btn btn-sm btn-outline-warning filter-btn" data-filter="Cao">Cao</button>
+                                    <button type="button" class="btn btn-sm btn-outline-info filter-btn" data-filter="Trung Bình">Trung Bình</button>
+                                    <button type="button" class="btn btn-sm btn-outline-success filter-btn" data-filter="Thấp">Thấp</button>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                 <label for="sortOptions" class="form-label fw-bold">⇅ Sắp xếp theo:</label>
+                                <select id="sortOptions" class="form-select form-select-sm">
+                                    <option value="default" selected>Mặc định</option>
+                                    <option value="risk-desc">Rủi ro giảm dần</option>
+                                    <option value="masv-asc">Mã SV tăng dần</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="table table-striped table-hover" id="resultTable" style="display:none;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Mã SV</th>
+                                    <th>Họ và tên</th>
+                                    <th>Lớp</th>
+                                    <th>TBCHT H4</th>
+                                    <th>HP Nợ</th>
+                                    <th>Điểm RL</th>
+                                    <th>Xếp loại</th>
+                                    <th>Học phí</th>
+                                    <th>Mức Độ Rủi Ro</th>
+                                    <th>Chi tiết</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultTableBody"></tbody>
+                        </table>
+                    </div>
+                    <button id="exportBtn" class="btn btn-primary mt-3" style="display:none;">📥 Xuất Kết Quả (Excel)</button>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="dashboard">
+                <div id="dashboard-area" class="mt-4 p-4 border rounded" style="display: none;">
+                    <h3 class="text-center mb-4">📈 Dashboard Tổng Quan</h3>
+                    <div class="row">
+                        <!-- Biểu đồ hiện có -->
+                        <div class="col-md-6 mb-4">
+                            <h5 class="text-center">Tỷ Lệ Rủi Ro</h5>
+                            <div class="chart-container">
+                                <canvas id="riskPieChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <h5 class="text-center">Mức Rủi Ro Trung Bình Theo Lớp</h5>
+                            <div class="chart-container">
+                                <canvas id="classBarChart"></canvas>
+                            </div>
+                        </div>
+                        <!-- Biểu đồ mới -->
+                        <div class="col-md-6 mb-4">
+                            <h5 class="text-center">Mối Quan Hệ GPA vs HP Nợ (Màu theo Rủi Ro)</h5>
+                            <div class="chart-container">
+                                <canvas id="gpaVsDebtScatter"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <h5 class="text-center">Trung Bình Điểm Rèn Luyện Theo Mức Rủi Ro</h5>
+                            <div class="chart-container">
+                                <canvas id="rlByRiskBar"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detailModalLabel">Chi tiết Phân tích Rủi ro</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="modalBodyContent"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "AIzaSyCSdImvFPXEZpzsNxxeWIDbdIRyV3Rb5eA"; // Vui lòng thay bằng API Key của bạn
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+        const responseSchema = {
+            type: "object",
+            properties: {
+                Muc_do_rui_ro: { 
+                    type: "string", 
+                    enum: ["Rất Cao", "Cao", "Trung Bình", "Thấp"], 
+                    description: "Mức độ rủi ro nghỉ học dự đoán." 
+                },
+                Diem_tin_cay_phan_tich: { 
+                    type: "number",
+                    minimum: 0.0,
+                    maximum: 1.0,
+                    description: "Điểm tin cậy của phân tích (từ 0.0 đến 1.0)." 
+                },
+                Giai_thich_chi_tiet: {
+                    type: "array",
+                    description: "Các yếu tố chính dẫn đến rủi ro này và đề xuất can thiệp (tối đa 4 ý).",
+                    items: { type: "string" }
+                }
+            },
+            required: ["Muc_do_rui_ro", "Giai_thich_chi_tiet"]
+        };
+
+        let studentsData = [];
+        let riskPieChartInstance = null;
+        let classBarChartInstance = null;
+        let gpaVsDebtScatterInstance = null;
+        let rlByRiskBarInstance = null;
+        
+        // BIẾN LƯU TRẠNG THÁI LỌC VÀ SẮP XẾP
+        let currentFilter = 'all';
+        let currentSort = 'default';
+
+        // ===== TAB 1: PHÂN TÍCH ĐƠN LẺ =====
+        document.getElementById('analysis-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const tbchtH4 = parseFloat(document.getElementById('tbchtH4').value);
+            const hpNo = parseInt(document.getElementById('hpNo').value);
+            const diemRL = parseInt(document.getElementById('diemRL').value);
+            const xepLoai = document.getElementById('xepLoai').value;
+
+            document.getElementById('loading-single').classList.remove('d-none');
+            document.getElementById('result-area').innerHTML = '<h4 class="mb-3">Kết Quả Phân Tích từ AI</h4>';
+
+            try {
+                const result = await analyzeStudent({ tbchtH4, hpNo, diemRL, xepLoai });
+                displaySingleResult(result);
+            } catch (error) {
+                document.getElementById('result-area').innerHTML += `<div class="alert alert-danger mt-3"><strong>Lỗi:</strong> ${error.message}</div>`;
+            } finally {
+                document.getElementById('loading-single').classList.add('d-none');
+            }
+        });
+
+        // ===== TAB 2: PHÂN TÍCH HÀNG LOẠT =====
+        document.getElementById('excelFile').addEventListener('change', function(e) {
+             const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    
+                    let jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+
+                    if (jsonData.length === 0) {
+                        alert('⚠️ File Excel trống!');
+                        return;
+                    }
+
+                    // Find header row by looking for 'Mã SV' or similar
+                    let headerRowIndex = -1;
+                    let header = [];
+                    for(let i = 0; i < Math.min(jsonData.length, 10); i++) {
+                        const row = jsonData[i].map(cell => String(cell).toLowerCase().trim());
+                        if (row.includes('mã sv') || row.includes('msv') || row.includes('mã sinh viên')) {
+                            headerRowIndex = i;
+                            header = jsonData[i].map(cell => String(cell).trim());
+                            break;
+                        }
+                    }
+
+                    if (headerRowIndex === -1) {
+                         alert('⚠️ Không tìm thấy dòng tiêu đề hợp lệ. Cần có cột "Mã SV".');
+                         return;
+                    }
+
+                    const jsonDataObjects = XLSX.utils.sheet_to_json(firstSheet, { range: headerRowIndex, defval: '' });
+
+                    studentsData = jsonDataObjects.map((row) => {
+                        const normalizedRow = {};
+                        for (const key in row) {
+                            normalizedRow[key.toLowerCase().trim()] = row[key];
+                        }
+                        
+                        return {
+                            maSV: String(normalizedRow['mã sv'] || normalizedRow['msv'] || ''),
+                            hoTen: String(normalizedRow['họ và tên'] || normalizedRow['hoten'] || ''),
+                            lop: String(normalizedRow['lớp'] || normalizedRow['lop'] || ''),
+                            tbchtH4: parseFloat(normalizedRow['tbcht h4'] || 0),
+                            hpNo: parseInt(normalizedRow['hp nợ'] || 0),
+                            diemRL: parseFloat(normalizedRow['điểm rl'] || 0),
+                            xepLoai: String(normalizedRow['xếp loại'] || 'Trung bình'),
+                            hocPhi: String(normalizedRow['học phí'] || '')
+                        };
+                    }).filter(s => s.maSV !== '' && s.maSV !== '0' && s.lop !== '');
+
+
+                    if (studentsData.length === 0) {
+                        alert('⚠️ Không tìm thấy dữ liệu sinh viên hợp lệ!\n\nVui lòng kiểm tra file có cột "Mã SV" và "Lớp" không.');
+                        return;
+                    }
+
+                    document.getElementById('analyzeBtn').disabled = false;
+                    alert(`✅ Đã tải thành công ${studentsData.length} sinh viên!`);
+                } catch (error) {
+                    alert('❌ Lỗi đọc file Excel: ' + error.message);
+                    console.error('Chi tiết lỗi:', error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        document.getElementById('analyzeBtn').addEventListener('click', async function() {
+            if (studentsData.length === 0) return;
+
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+
+            progressContainer.style.display = 'block';
+            document.getElementById('dashboard-area').style.display = 'none';
+            document.getElementById('resultTable').style.display = 'none';
+            document.getElementById('exportBtn').style.display = 'none';
+            document.getElementById('controls-area').style.display = 'none';
+            this.disabled = true;
+
+            const results = [];
+            for (let i = 0; i < studentsData.length; i++) {
+                const student = studentsData[i];
+                progressText.textContent = `${i + 1}/${studentsData.length}`;
+                progressBar.style.width = `${((i + 1) / studentsData.length) * 100}%`;
+
+                try {
+                    const analysis = await analyzeStudent({
+                        tbchtH4: student.tbchtH4, hpNo: student.hpNo,
+                        diemRL: student.diemRL, xepLoai: student.xepLoai
+                    });
+                    results.push({ ...student, ...analysis, riskLevel: analysis.Muc_do_rui_ro, details: analysis.Giai_thich_chi_tiet });
+                } catch (error) {
+                    results.push({ ...student, riskLevel: 'Lỗi', details: [error.message] });
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            window.batchResults = results; // Lưu kết quả gốc
+            applyFiltersAndSort(); // Hiển thị lần đầu
+            updateDashboard(results);
+            
+            progressContainer.style.display = 'none';
+            this.disabled = false;
+            document.getElementById('resultTable').style.display = 'table';
+            document.getElementById('exportBtn').style.display = 'block';
+            document.getElementById('controls-area').style.display = 'block';
+
+            // Tự động chuyển sang tab Dashboard sau khi phân tích xong
+            document.getElementById('dashboard-tab').click();
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            const table = document.getElementById('resultTable');
+            const wb = XLSX.utils.table_to_book(table);
+            XLSX.writeFile(wb, 'Ket_qua_phan_tich_rui_ro.xlsx');
+        });
+        
+        // ===== HÀM MỚI ĐỂ VẼ LẠI BẢNG DỮ LIỆU =====
+        function applyFiltersAndSort() {
+            if (!window.batchResults) return;
+
+            let dataToDisplay = [...window.batchResults];
+
+            // 1. Áp dụng bộ lọc
+            if (currentFilter !== 'all') {
+                dataToDisplay = dataToDisplay.filter(r => r.riskLevel === currentFilter);
+            }
+
+            // 2. Áp dụng sắp xếp
+            const riskScores = { 'Rất Cao': 4, 'Cao': 3, 'Trung Bình': 2, 'Thấp': 1, 'Lỗi': 0 };
+            if (currentSort === 'risk-desc') {
+                dataToDisplay.sort((a, b) => (riskScores[b.riskLevel] || 0) - (riskScores[a.riskLevel] || 0));
+            } else if (currentSort === 'masv-asc') {
+                dataToDisplay.sort((a, b) => a.maSV.localeCompare(b.maSV));
+            }
+
+            // 3. Vẽ lại bảng
+            const tbody = document.getElementById('resultTableBody');
+            tbody.innerHTML = dataToDisplay.map(r => {
+                const originalIndex = window.batchResults.findIndex(orig => orig.maSV === r.maSV);
+                const colorClass = r.riskLevel === 'Rất Cao' || r.riskLevel === 'Cao' ? 'risk-high' 
+                                 : r.riskLevel === 'Trung Bình' ? 'risk-medium' : 'risk-low';
+                return `
+                    <tr>
+                        <td>${r.maSV}</td>
+                        <td>${r.hoTen}</td>
+                        <td>${r.lop}</td>
+                        <td>${r.tbchtH4}</td>
+                        <td>${r.hpNo}</td>
+                        <td>${r.diemRL}</td>
+                        <td>${r.xepLoai}</td>
+                        <td>${r.hocPhi}</td>
+                        <td class="${colorClass}"><strong>${r.riskLevel}</strong></td>
+                        <td>
+                            <button class="btn btn-sm btn-info" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#detailModal" 
+                                    data-index="${originalIndex}">
+                                Xem
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ===== LẮNG NGHE SỰ KIỆN CHO CÁC NÚT LỌC VÀ SẮP XẾP =====
+        document.querySelectorAll('.filter-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                // Cập nhật trạng thái active cho nút
+                document.querySelector('.filter-btn.active').classList.remove('active');
+                this.classList.add('active');
+                
+                // Cập nhật biến lọc và vẽ lại bảng
+                currentFilter = this.dataset.filter;
+                applyFiltersAndSort();
+            });
+        });
+
+        document.getElementById('sortOptions').addEventListener('change', function() {
+            currentSort = this.value;
+            applyFiltersAndSort();
+        });
+
+
+        // ===== HELPER FUNCTIONS (Không thay đổi nhiều) =====
+        async function analyzeStudent(data) {
+             const promptText = `
+                Bạn là chuyên gia phân tích rủi ro học tập với 10 năm kinh nghiệm tại các trường đại học Việt Nam.
+                
+                NGUYÊN TẮC ĐÁNH GIÁ RỦI RO:
+                - GPA < 2.0 và HP Nợ > 5: Rủi ro Rất Cao
+                - GPA 2.0-2.5 và HP Nợ 3-5: Rủi ro Cao  
+                - GPA 2.5-3.0 và HP Nợ 1-2: Rủi ro Trung Bình
+                - GPA > 3.0 và HP Nợ = 0: Rủi ro Thấp
+                - Điểm rèn luyện < 65 cũng là yếu tố rủi ro bổ sung
+
+                Dưới đây là hồ sơ của sinh viên:
+                - Điểm TB Chung Hệ 4: ${data.tbchtH4}
+                - Số Học phần Nợ: ${data.hpNo}
+                - Điểm Rèn Luyện: ${data.diemRL}
+                - Xếp Loại Học tập: ${data.xepLoai}
+
+                Hãy phân tích và cung cấp kết quả theo định dạng JSON.
+            `;
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: promptText }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: responseSchema
+                    }
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.error) {
+                throw new Error(result.error.message || 'Lỗi API không xác định.');
+            }
+
+            if (!result.candidates || !result.candidates[0]?.content?.parts?.[0]?.text) {
+                throw new Error('Gemini không trả về dữ liệu hợp lệ.');
+            }
+
+            return JSON.parse(result.candidates[0].content.parts[0].text);
+        }
+
+        function displaySingleResult(result) {
+            const resultArea = document.getElementById('result-area');
+            let colorClass = result.Muc_do_rui_ro === 'Rất Cao' || result.Muc_do_rui_ro === 'Cao' ? 'risk-high' 
+                           : result.Muc_do_rui_ro === 'Trung Bình' ? 'risk-medium' : 'risk-low';
+
+            const confidence = result.Diem_tin_cay_phan_tich ? (result.Diem_tin_cay_phan_tich * 100).toFixed(2) : 'N/A';
+
+            resultArea.innerHTML = `
+                <h4 class="mb-3">Kết Quả Phân Tích từ AI</h4>
+                <div class="p-3 rounded ${colorClass}">
+                    <h5 class="mb-0">Mức Độ Rủi Ro: <strong>${result.Muc_do_rui_ro}</strong></h5>
+                </div>
+                <p class="mt-3">Điểm tin cậy phân tích: <strong>${confidence}${confidence !== 'N/A' ? '%' : ''}</strong></p>
+                <h5 class="mt-4">💡 Yếu Tố Chính & Đề Xuất Can Thiệp:</h5>
+                <ul class="list-group">
+                    ${result.Giai_thich_chi_tiet.map(item => `<li class="list-group-item">${item}</li>`).join('')}
+                </ul>
+            `;
+        }
+
+        function updateDashboard(results) {
+             document.getElementById('dashboard-area').style.display = 'block';
+
+            const riskCounts = { 'Rất Cao': 0, 'Cao': 0, 'Trung Bình': 0, 'Thấp': 0, 'Lỗi': 0 };
+            results.forEach(r => {
+                if (riskCounts.hasOwnProperty(r.riskLevel)) {
+                    riskCounts[r.riskLevel]++;
+                }
+            });
+
+            const riskScores = { 'Rất Cao': 4, 'Cao': 3, 'Trung Bình': 2, 'Thấp': 1, 'Lỗi': 0 };
+            const classRisk = {};
+
+            results.forEach(r => {
+                if (!r.lop) return; // Bỏ qua nếu không có tên lớp
+                if (!classRisk[r.lop]) {
+                    classRisk[r.lop] = { totalScore: 0, count: 0 };
+                }
+                classRisk[r.lop].totalScore += riskScores[r.riskLevel] || 0;
+                classRisk[r.lop].count++;
+            });
+
+            const classLabels = Object.keys(classRisk);
+            const classAvgScores = classLabels.map(lop => classRisk[lop].totalScore / classRisk[lop].count);
+
+            // Vẽ biểu đồ tròn
+            const pieCtx = document.getElementById('riskPieChart').getContext('2d');
+            if (riskPieChartInstance) riskPieChartInstance.destroy();
+            riskPieChartInstance = new Chart(pieCtx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(riskCounts),
+                    datasets: [{
+                        label: 'Số lượng Sinh viên',
+                        data: Object.values(riskCounts),
+                        backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#198754', '#6c757d'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+            });
+
+            // Vẽ biểu đồ cột
+            const barCtx = document.getElementById('classBarChart').getContext('2d');
+            if (classBarChartInstance) classBarChartInstance.destroy();
+            classBarChartInstance = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: classLabels,
+                    datasets: [{
+                        label: 'Mức Rủi Ro Trung Bình (Thấp=1, Rất Cao=4)',
+                        data: classAvgScores,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 4 } }, plugins: { legend: { display: false } } }
+            });
+
+            // Biểu đồ mới 1: Scatter Plot GPA vs HP Nợ
+            const riskColors = {
+                'Rất Cao': '#dc3545',
+                'Cao': '#fd7e14',
+                'Trung Bình': '#ffc107',
+                'Thấp': '#198754',
+                'Lỗi': '#6c757d'
+            };
+
+            const scatterData = results.map(r => ({
+                x: r.tbchtH4,
+                y: r.hpNo,
+                backgroundColor: riskColors[r.riskLevel] || '#6c757d'
+            }));
+
+            const scatterCtx = document.getElementById('gpaVsDebtScatter').getContext('2d');
+            if (gpaVsDebtScatterInstance) gpaVsDebtScatterInstance.destroy();
+            gpaVsDebtScatterInstance = new Chart(scatterCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Sinh viên',
+                        data: scatterData,
+                        backgroundColor: scatterData.map(d => d.backgroundColor),
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: 'GPA (TBCHT H4)' }, min: 0, max: 4 },
+                        y: { title: { display: true, text: 'Số HP Nợ' }, min: 0 }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Biểu đồ mới 2: Bar Chart Trung bình Điểm RL theo Rủi Ro
+            const rlByRisk = { 'Rất Cao': { total: 0, count: 0 }, 'Cao': { total: 0, count: 0 }, 
+                               'Trung Bình': { total: 0, count: 0 }, 'Thấp': { total: 0, count: 0 }, 'Lỗi': { total: 0, count: 0 } };
+
+            results.forEach(r => {
+                if (rlByRisk[r.riskLevel]) {
+                    rlByRisk[r.riskLevel].total += r.diemRL;
+                    rlByRisk[r.riskLevel].count++;
+                }
+            });
+
+            const rlLabels = Object.keys(rlByRisk);
+            const rlAvg = rlLabels.map(key => rlByRisk[key].count > 0 ? (rlByRisk[key].total / rlByRisk[key].count).toFixed(2) : 0);
+
+            const rlCtx = document.getElementById('rlByRiskBar').getContext('2d');
+            if (rlByRiskBarInstance) rlByRiskBarInstance.destroy();
+            rlByRiskBarInstance = new Chart(rlCtx, {
+                type: 'bar',
+                data: {
+                    labels: rlLabels,
+                    datasets: [{
+                        label: 'Trung bình Điểm RL',
+                        data: rlAvg,
+                        backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#198754', '#6c757d']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 100 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+        
+        const detailModal = document.getElementById('detailModal');
+        if (detailModal) {
+            detailModal.addEventListener('show.bs.modal', function (event) {
+                 const button = event.relatedTarget;
+                const index = button.getAttribute('data-index');
+                const result = window.batchResults[index];
+
+                const modalTitle = detailModal.querySelector('.modal-title');
+                const modalBody = detailModal.querySelector('.modal-body');
+
+                modalTitle.textContent = `Phân tích cho SV: ${result.hoTen} (${result.maSV})`;
+                
+                const detailsHtml = `
+                    <p class="mb-2"><strong>Lớp:</strong> ${result.lop}</p>
+                    <p><strong>Mức Độ Rủi Ro:</strong> <span class="fw-bold">${result.riskLevel}</span></p>
+                    <h5 class="mt-4">💡 Yếu Tố Chính & Đề Xuất Can Thiệp:</h5>
+                    <ul class="list-group list-group-flush">
+                        ${result.details.map(item => `<li class="list-group-item">${item}</li>`).join('')}
+                    </ul>
+                `;
+                modalBody.innerHTML = detailsHtml;
+            });
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
