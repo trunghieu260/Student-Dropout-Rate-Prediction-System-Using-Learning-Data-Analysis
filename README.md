@@ -45,6 +45,104 @@
     <img alt="Language: Vietnamese" src="https://img.shields.io/badge/Language-Vietnamese-22b8cf?style=flat-square">
   </p>
 </div>
-
 ---
 # Student-Dropout-Rate-Prediction-System-Using-Learning-Data-Analysis
+
+# 🎓 Hệ Thống Dự Báo Tỷ Lệ Bỏ Học Sinh Viên
+
+Ứng dụng phân tích rủi ro nghỉ học sinh viên dựa trên dữ liệu học tập, sử dụng Gemini AI.
+
+## ✨ Tính Năng Chính
+
+- 🔍 **Phân tích đơn lẻ**: Đánh giá nhanh 1 sinh viên
+- 📊 **Phân tích hàng loạt**: Upload Excel, xử lý nhiều sinh viên
+- 📈 **Dashboard**: 4 biểu đồ thống kê trực quan
+- 🎯 **Lọc & sắp xếp**: Dễ dàng quản lý kết quả
+- 📥 **Xuất Excel**: Export kết quả phân tích
+
+## 🚀 Cài Đặt
+
+### Bước 1: Lấy API Key
+
+1. Truy cập [Google AI Studio](https://aistudio.google.com/)
+2. Đăng nhập → Click **"Get API Key"**
+3. Copy API Key
+
+### Bước 2: Cấu Hình
+
+Mở file `index.html`, tìm dòng **217** và thay API Key:
+
+```javascript
+const API_KEY = "YOUR_API_KEY_HERE"; // 👈 Thay bằng API Key của bạn
+```
+
+### Bước 3: Chạy Ứng Dụng
+
+**Cách 1: Mở trực tiếp**
+```bash
+# Mở file index.html bằng trình duyệt
+```
+
+**Cách 2: Live Server (Khuyến nghị)**
+```bash
+npm install -g live-server
+live-server
+```
+
+**Cách 3: Python HTTP Server**
+```bash
+python -m http.server 8000
+# Mở: http://localhost:8000
+```
+
+## 📖 Hướng Dẫn Sử Dụng
+
+### Phân Tích Đơn Lẻ
+1. Nhập: GPA, HP Nợ, Điểm RL, Xếp loại
+2. Click **"Phân Tích Rủi Ro"**
+3. Xem kết quả với màu sắc: 🔴 Cao | 🟡 TB | 🟢 Thấp
+
+### Phân Tích Hàng Loạt
+1. Chuẩn bị Excel với các cột: `Mã SV`, `Họ và tên`, `Lớp`, `TBCHT H4`, `HP Nợ`, `Điểm RL`, `Xếp loại`
+2. Upload file → Click **"Phân Tích Tất Cả"**
+3. Xem bảng kết quả, lọc theo rủi ro, xuất Excel
+
+### Dashboard
+- Tự động hiển thị sau khi phân tích hàng loạt
+- 4 biểu đồ: Tỷ lệ rủi ro, Rủi ro/lớp, GPA vs Nợ, Điểm RL
+
+## 🛠️ Công Nghệ
+
+- Bootstrap 5.3.3
+- Chart.js
+- SheetJS (xlsx.js)
+- Gemini API 1.5 Flash
+
+## 📋 File Excel Mẫu
+
+| Mã SV | Họ và tên | Lớp | TBCHT H4 | HP Nợ | Điểm RL | Xếp loại |
+|-------|-----------|-----|----------|-------|---------|----------|
+| SV001 | Nguyễn Văn A | CNTT01 | 2.5 | 3 | 75 | Khá |
+| SV002 | Trần Thị B | CNTT02 | 3.2 | 0 | 85 | Giỏi |
+
+## 🐛 Xử Lý Lỗi
+
+**Lỗi API Key**: Kiểm tra lại API Key ở dòng 217
+
+**CORS Error**: Chạy qua HTTP Server (không mở file trực tiếp)
+
+**Rate Limit**: Đợi 1 phút (Free: 60 requests/phút)
+
+## 📄 Giấy Phép
+
+MIT License
+
+## 👥 Tác Giả
+
+**[Tên Sinh Viên]**  
+Trường: [Tên Trường]  
+Giảng viên HD: [Tên GV]
+
+---
+
+Made with ❤️ for Vietnamese Education
