@@ -133,15 +133,10 @@ python -m http.server 8000
 
 **Rate Limit**: Đợi 1 phút (Free: 60 requests/phút)
 
-## 📄 Giấy Phép
-
-MIT License
 
 ## 👥 Tác Giả
 
-**[Tên Sinh Viên]**  
-Trường: [Tên Trường]  
-Giảng viên HD: [Tên GV]
+**[Nông Trung Hiếu]**  
 
 ---
 
