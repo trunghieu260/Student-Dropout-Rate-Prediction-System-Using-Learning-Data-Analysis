@@ -46,7 +46,6 @@
   </p>
 </div>
 ---
-# Student-Dropout-Rate-Prediction-System-Using-Learning-Data-Analysis
 
 # 🎓 Hệ Thống Dự Báo Tỷ Lệ Bỏ Học Sinh Viên
 
