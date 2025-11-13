@@ -4,11 +4,6 @@
   </a>
 </h2>
 
-<h2 align="center">
-   TRIỂN KHAI HỆ THỐNG EDUAI - TỰ ĐỘNG BÁO CÁO NHẬN XÉT VÀ SO SÁNH<br> 
-   BÁO CÁO HỌC TẬP TRÊN GOOGLE WORKSPACE (VLM)
-</h2>
-
 <div align="center">
   <p align="center">
     <img width="200" alt="dnu_logo" src="https://github.com/user-attachments/assets/2bcb1a6c-774c-4e7d-b14d-8c53dbb4067f" />
